@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>EICV7 Non-Standard Data</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <!-- Choices.js CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+</head>
+<body>
+<h1>EICV7 Non-Standard Data from MongoDB</h1>
+
+<form method="get" id="filterForm">
+    <!-- Province -->
+    <select name="Province" id="province" multiple>
+        {% for p in provinces %}
+            <option value="{{p}}" {% if p in selected_filters.Province %}selected{% endif %}>{{p}}</option>
+        {% endfor %}
+    </select>
+
+    <!-- District -->
+    <select name="District" id="district" multiple>
+        {% for d in districts %}
+            <option value="{{d}}" {% if d in selected_filters.District %}selected{% endif %}>{{d}}</option>
+        {% endfor %}
+    </select>
+
+    <!-- Sector -->
+    <select name="Sector" id="sector" multiple>
+        {% for s in sectors %}
+            <option value="{{s}}" {% if s in selected_filters.Sector %}selected{% endif %}>{{s}}</option>
+        {% endfor %}
+    </select>
+
+    <!-- Product -->
+    <select name="b_products" id="b_products" multiple>
+        {% for b in products %}
+            <option value="{{b}}" {% if b in selected_filters.b_products %}selected{% endif %}>{{b}}</option>
+        {% endfor %}
+    </select>
+
+    <!-- NSU -->
+    <select name="b_nsu" id="b_nsu" multiple>
+        {% for b in b_nsu_values %}
+            <option value="{{b}}" {% if b in selected_filters.b_nsu %}selected{% endif %}>{{b}}</option>
+        {% endfor %}
+    </select>
+
+    {% comment %} <select name="bq3" id="bq3">
+    <option value="" {% if not selected_filters.bq3 %}selected{% endif %}>-- All Units --</option>
+    <option value="1" {% if selected_filters.bq3 == "1" %}selected{% endif %}>kg</option>
+    <option value="2" {% if selected_filters.bq3 == "2" %}selected{% endif %}>litre</option>
+</select> {% endcomment %}
+
+
+    <button type="submit">Filter</button>
+    <a class="export-btn" href="{% url 'export_csv' %}?{{ request.GET.urlencode }}">⬇️ Export Filtered</a>
+    <button type="button" onclick="resetFilters()">Clear Selections</button>
+</form>
+
+<!-- Filter summary -->
+<div class="filter-summary">
+    <h3>Active Filters</h3>
+    <ul>
+        {% for key, values in selected_filters.items %}
+            {% if values %}
+                <li><strong>{{ key }}:</strong> {{ values|join:", " }}</li>
+            {% endif %}
+        {% endfor %}
+    </ul>
+</div>
+
+<hr>
+
+<a href="{% url 'upload_single_entry' %}" class="export-btn">➕ Upload New Image + Metadata</a>
+
+<hr>
+
+
+
+<div class="gallery">
+    {% for item in results %}
+    <div class="card">
+        <img src="/image/{{ item.file_id }}" alt="{{ item.filename }}">
+        <p><strong>Product:</strong> {{ item.metadata.b_products }}</p>
+        <p><strong>Province:</strong> {{ item.metadata.Province }}</p>
+        <p><strong>District:</strong> {{ item.metadata.District }}</p>
+        <p><strong>Sector:</strong> {{ item.metadata.Sector }}</p>
+        <p><strong>Weight:</strong> {{ item.metadata.bq7 }}</p>
+
+        <p><strong>Measurement unit:</strong>
+            {% if item.metadata.bq3 == 1 or item.metadata.bq3 == "1" %}
+                kg
+            {% elif item.metadata.bq3 == 2 or item.metadata.bq3 == "2" %}
+                litre
+            {% else %}
+                {{ item.metadata.bq3 }}
+            {% endif %}
+        </p>
+        {% comment %} <p><strong>Measurement unit:</strong> 
+            {% if item.metadata.bq3 == "1" %}kg
+            {% elif item.metadata.bq3 == "2" %}litre
+            {% else %}{{ item.metadata.bq3 }}{% endif %}
+        </p> {% endcomment %}
+        <p><strong>NSU:</strong> {{ item.metadata.b_nsu }}</p>
+
+    </div>
+    {% empty %}
+    <p>No images found for selected filters.</p>
+    {% endfor %}
+</div>
+
+<!-- Choices.js & cascading JS -->
+<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+<script>
+    function resetFilters() {
+        document.getElementById('filterForm').reset();
+        // Reset Choices selects
+        [provinceSelect, districtSelect, sectorSelect, productsSelect, nsuSelect, bq3Select].forEach(c => c.clearStore());
+    }
+
+    // Cascading dropdowns
+    document.getElementById("province").addEventListener("change", function() {
+        const selectedProvinces = Array.from(this.selectedOptions).map(o => o.value);
+        fetch(`/get_child_options/?parent_field=Province&parent_value=${selectedProvinces.join(",")}`)
+        .then(res => res.json())
+        .then(data => {
+            districtSelect.setChoices(data.options.map(o => ({value:o,label:o})), 'value', 'label', true);
+        });
+    });
+
+    document.getElementById("district").addEventListener("change", function() {
+        const selectedDistricts = Array.from(this.selectedOptions).map(o => o.value);
+        fetch(`/get_child_options/?parent_field=District&parent_value=${selectedDistricts.join(",")}`)
+        .then(res => res.json())
+        .then(data => {
+            sectorSelect.setChoices(data.options.map(o => ({value:o,label:o})), 'value', 'label', true);
+        });
+    });
+
+    // Initialize Choices.js
+    const provinceSelect = new Choices('#province', {removeItemButton:true, searchEnabled:true, placeholderValue:'-- Select Province --'});
+    const districtSelect = new Choices('#district', {removeItemButton:true, searchEnabled:true, placeholderValue:'-- Select District --'});
+    const sectorSelect = new Choices('#sector', {removeItemButton:true, searchEnabled:true, placeholderValue:'-- Select Sector --'});
+    const productsSelect = new Choices('#b_products', {removeItemButton:true, searchEnabled:true, placeholderValue:'-- Select Product --'});
+    const nsuSelect = new Choices('#b_nsu', {removeItemButton:true, searchEnabled:true, placeholderValue:'-- Select NSU --'});
+    const bq3Select = new Choices('#bq3', {removeItemButton:true, searchEnabled:false, shouldSort:false,allowHTML:true});
+    
+</script>
+</body>
+</html>

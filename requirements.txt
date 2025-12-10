@@ -1,0 +1,7 @@
+django==5.0.4
+pymongo==4.7.2
+pillow
+pandas
+dnspython
+numpy
+python-dotenv

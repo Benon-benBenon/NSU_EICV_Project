@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Upload Image + Metadata</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+
+<body>
+
+<h2 style="text-align:center;color:#007b83;">Upload New Metadata + Image</h2>
+
+<div style="max-width:600px;margin:auto;background:#fff;padding:20px;border-radius:10px;box-shadow:0 4px 8px rgba(0,0,0,0.1);">
+
+    {% if success %}
+        <p style="color:green;font-weight:bold;">{{ success }}</p>
+    {% endif %}
+
+    {% if error %}
+        <p style="color:red;font-weight:bold;">{{ error }}</p>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form.as_p }}
+
+        <button type="submit">Upload</button>
+    </form>
+
+    <br>
+    <a href="/" style="color:#007b83;text-decoration:none;">⬅ Back to main page</a>
+
+</div>
+
+</body>
+</html>
