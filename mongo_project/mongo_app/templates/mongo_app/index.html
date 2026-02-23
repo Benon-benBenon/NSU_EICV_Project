@@ -114,10 +114,141 @@
 <!-- Choices.js & cascading JS -->
 <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
 <script>
+// ----------------------------------------------------
+// 1. Initialize Choices.js (must be FIRST)
+// ----------------------------------------------------
+const provinceSelect = new Choices('#province', {
+    removeItemButton:true,
+    searchEnabled:true,
+    placeholderValue:'-- Select Province --'
+});
+
+const districtSelect = new Choices('#district', {
+    removeItemButton:true,
+    searchEnabled:true,
+    placeholderValue:'-- Select District --'
+});
+
+const sectorSelect = new Choices('#sector', {
+    removeItemButton:true,
+    searchEnabled:true,
+    placeholderValue:'-- Select Sector --'
+});
+
+const productsSelect = new Choices('#b_products', {
+    removeItemButton:true,
+    searchEnabled:true,
+    placeholderValue:'-- Select Product --'
+});
+
+const nsuSelect = new Choices('#b_nsu', {
+    removeItemButton:true,
+    searchEnabled:true,
+    placeholderValue:'-- Select NSU --'
+});
+
+const bq3Select = new Choices('#bq3', {
+    removeItemButton:true,
+    searchEnabled:false,
+    shouldSort:false,
+    allowHTML:true
+});
+
+// Helper function: reset a Choices dropdown
+function resetChoices(selectObj) {
+    selectObj.removeActiveItems();   // remove selected tags
+    selectObj.clearStore();          // clear internal list
+    selectObj.setChoices([], 'value','label', true); // fully reset
+}
+
+// ----------------------------------------------------
+// 2. Reset Filters
+// ----------------------------------------------------
+function resetFilters() {
+    document.getElementById('filterForm').reset();
+
+    resetChoices(provinceSelect);
+    resetChoices(districtSelect);
+    resetChoices(sectorSelect);
+    resetChoices(productsSelect);
+    resetChoices(nsuSelect);
+    resetChoices(bq3Select);
+}
+
+// ----------------------------------------------------
+// 3. Province → District
+// ----------------------------------------------------
+document.getElementById("province").addEventListener("change", function () {
+
+    const provinces = provinceSelect.getValue(true); // array of selected provinces
+
+    resetChoices(districtSelect);
+    resetChoices(sectorSelect);
+    resetChoices(productsSelect);
+
+    if (provinces.length === 0) return; // nothing selected
+
+    fetch(`/get_child_options/?parent_field=Province&parent_value=${encodeURIComponent(provinces.join(","))}`)
+        .then(res => res.json())
+        .then(data => {
+            districtSelect.setChoices(
+                data.options.map(v => ({value:v, label:v})),
+                'value','label',true
+            );
+        });
+});
+
+// ----------------------------------------------------
+// 4. District → Sector
+// ----------------------------------------------------
+document.getElementById("district").addEventListener("change", function () {
+
+    const districts = districtSelect.getValue(true);  
+
+    resetChoices(sectorSelect);
+    resetChoices(productsSelect);
+
+    if (districts.length === 0) return;
+
+    fetch(`/get_child_options/?parent_field=District&parent_value=${encodeURIComponent(districts.join(","))}`)
+        .then(res => res.json())
+        .then(data => {
+            sectorSelect.setChoices(
+                data.options.map(v => ({value:v, label:v})),
+                'value','label',true
+            );
+        });
+});
+
+// ----------------------------------------------------
+// 5. Sector → Products (Filtered by Province, District, Sector)
+// ----------------------------------------------------
+document.getElementById("sector").addEventListener("change", function () {
+
+    const provinces = provinceSelect.getValue(true);
+    const districts = districtSelect.getValue(true);
+    const sectors   = sectorSelect.getValue(true);
+
+    resetChoices(productsSelect);
+
+    if (sectors.length === 0) return;
+
+    fetch(`/get_products/?province=${encodeURIComponent(provinces.join(","))}&district=${encodeURIComponent(districts.join(","))}&sector=${encodeURIComponent(sectors.join(","))}`)
+        .then(res => res.json())
+        .then(data => {
+            productsSelect.setChoices(
+                data.options.map(v => ({value:v, label:v})),
+                'value','label',true
+            );
+        });
+});
+</script>
+
+{% comment %} <script>
     function resetFilters() {
         document.getElementById('filterForm').reset();
         // Reset Choices selects
-        [provinceSelect, districtSelect, sectorSelect, productsSelect, nsuSelect, bq3Select].forEach(c => c.clearStore());
+        [provinceSelect, districtSelect, sectorSelect, productsSelect, nsuSelect].forEach(c => c.clearStore());
     }
 
     // Cascading dropdowns
@@ -147,6 +278,6 @@
     const nsuSelect = new Choices('#b_nsu', {removeItemButton:true, searchEnabled:true, placeholderValue:'-- Select NSU --'});
     const bq3Select = new Choices('#bq3', {removeItemButton:true, searchEnabled:false, shouldSort:false,allowHTML:true});
     
-</script>
+</script> {% endcomment %}
 </body>
 </html>
